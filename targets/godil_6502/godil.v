@@ -16,7 +16,15 @@ module godil40_xc3s500e(
   input nmi,
   input irq,
 // end of 6502 pins on DIL40 connector
-  output [1:0] led
+  output [1:0] led,
+
+  output pin_c1,
+  output pin_a2,
+  input sw1,
+  input sw2,
+  output tst_rclk,
+  output tst_sclk,
+  output tst_ser
 );
 
 // synchronized signals
@@ -28,6 +36,9 @@ module godil40_xc3s500e(
    reg        syn_nmi;
    reg        syn_irq;
 
+// debounced buttons
+   wire       btn1;
+   wire       btn2;
 
 // handle three-state data bus
 
@@ -55,11 +66,21 @@ module godil40_xc3s500e(
       syn_irq  = irq;
    end
 
+// debounce buttons
+   debouncer _deb1(eclk,  sw1, btn1);
+   debouncer _deb2(eclk, !sw2, btn2);
+
 // blink an LED using eclk
 
   blink #(26) _blink0(eclk, led[0]);
 
   assign led[1] = !res;
+
+// calculate and display the difference between phi0 and phi2
+   wire [15:0] diffticks;
+   
+   clock_difference _cdiff(eclk, syn_clk0, clk2out, diffticks, pin_c1, pin_a2);
+   dy1 _display(eclk, (diffticks >> 8) & 15,(diffticks >> 4) & 15,diffticks & 15, tst_rclk, tst_sclk, tst_ser);
 
 // instantiate the 6502 model
 
@@ -82,7 +103,7 @@ module clock_and_reset(
 );
 
   wire clk_56mhz;
-  dcm_mult #(8,7) _dcm0(clk_in, clk_56mhz);
+  dcm_mult #(3,2) _dcm0(clk_in, clk_56mhz);
   BUFG b0(.I(clk_56mhz), .O(eclk));
 
   reg [7:0] r = 8'd0;
@@ -130,3 +151,263 @@ module blink(
   assign led = c[W-1];
 
 endmodule
+
+
+//
+// PLL to adjust the clock delay
+// (unfinished)
+//
+
+// phase difference calculation
+module clock_difference(
+                 input eclk,
+                 input phi0,
+                 input phi2,
+                 output integer diffticks,
+                 output l0,
+                 output l1
+                 );
+
+   parameter [2:0]
+     STATE_IDLE  = 2'b00,
+     STATE_WAIT0 = 2'b01,
+     STATE_WAIT2 = 2'b10;
+
+   integer                      curticks;
+   reg [1:0]                    state = STATE_IDLE;
+
+                          
+   wire                         phi0long, phi2long;
+
+   long_clock_finder #(40) _clk0long(phi0, eclk, phi0long);
+   long_clock_finder #(40) _clk2long(phi2, eclk, phi2long);
+
+   assign l0 = phi0long;
+   assign l1 = phi2long;
+   
+   always @(posedge eclk) begin
+      if (phi0long || phi2long) begin
+         // something happened
+         if (phi0long && phi2long) begin
+            // both at the same time
+            diffticks <= 0;
+            state <= STATE_IDLE;
+         end else begin
+            // single event
+            case (state)
+              STATE_IDLE: begin
+                 if (phi0long) begin
+                    // first event on phi0
+                    state <= STATE_WAIT2;
+                    curticks <= 0;
+                 end else begin
+                    // first event on phi2
+                    state <= STATE_WAIT0;
+                    curticks <= 0;
+                 end
+              end // case: STATE_IDLE
+              
+              STATE_WAIT0: begin
+                 if (phi0long) begin
+                    // end event found
+                    state <= STATE_IDLE;
+                    diffticks <= curticks;
+                 end else begin
+                    // double start event found
+                    curticks <= 0;
+                 end
+              end
+
+              STATE_WAIT2: begin
+                 if (phi0long) begin
+                    // double start event found
+                    curticks <= 0;
+                 end else begin
+                    // end event found
+                    state <= STATE_IDLE;
+                    diffticks <= -curticks;
+                 end
+              end
+
+              default: state <= STATE_IDLE;
+            endcase // case (state)
+         end // else: !if(phi0long && phi2long)
+      end else begin // if (phi0long || phi2long)
+         if (state != STATE_IDLE)
+           curticks <= curticks + 1;
+      end // else: !if(phi0long || phi2long)
+   end // always @ (posedge eclk)
+
+endmodule // clock_pll
+
+
+// outputs a single-clock signal when the falling edge of a long clock pulse is detected
+module long_clock_finder(
+                    input  clock,
+                    input  eclk,
+                    output reg longclock
+                    );
+   parameter LONGCOUNT = 43;
+   
+   reg [7:0]               ticks;
+   reg                     prevstate;
+      
+   always @(posedge eclk) begin
+      if (clock != prevstate) begin
+         // clock edge
+         if (clock) begin
+            // clock is now high, reset counter
+            ticks <= 8'd0;
+         end else begin
+            // clock is now low, check number of ticks
+            if (ticks > LONGCOUNT) begin
+               longclock <= 1;
+            end
+         end
+      end else begin // if (clock != prevstate)
+         longclock <= 0;
+         if (clock) begin
+            // clock is high, increment ticks
+            ticks <= ticks + 1;
+         end
+      end // else: !if(clock != prevstate)
+      prevstate = clock;
+   end // always @ (posedge eclk)
+
+endmodule // long_clock_finder
+
+
+/* ---- 7-Segment-Display ---- */
+
+module dy1(
+           input eclk,
+           input [3:0] digit1,
+           input [3:0] digit2,
+           input [3:0] digit3,
+           output rclk,
+           output sclk,
+           output ser
+           );
+
+   wire [23:0]    segments;
+   
+   hex2segments seg3(digit3, segments[7:0]);
+   hex2segments seg2(digit2, segments[15:8]);
+   hex2segments seg1(digit1, segments[23:16]);
+
+   segmentshifter shifter(eclk, segments, rclk, sclk, ser);
+  
+endmodule // dy1
+                         
+
+module segmentshifter(
+                      input eclk,
+                      input [23:0] segments,
+                      output reg rclk,
+                      output reg sclk,
+                      output reg ser
+                      );
+   parameter CLOCKDIV = 64;
+
+   integer                   clkcount = 0;
+
+   reg [4:0]                 curseg = 0;
+
+   reg                       foo = 0;
+
+   
+   always @(posedge eclk) begin
+      if (clkcount < CLOCKDIV) begin
+         if (clkcount == CLOCKDIV/2) begin
+            // toggle SCLK in the middle
+            sclk <= 1;
+         end
+            
+         clkcount <= clkcount + 1;
+      end else begin
+         clkcount <= 0;
+
+         // output current segment
+         ser  <= !segments[curseg];
+         sclk <= 0;
+
+         if (curseg == 23) begin
+            // last segment is now shifted in, copy to output
+            rclk <= 1;
+         end else begin
+            // set rclk low to enable outputs
+            rclk <= 0;
+         end
+         
+         if (curseg > 0) begin
+            curseg <= curseg - 1;
+         end else begin
+            // wrap
+            curseg <= 23;
+         end
+
+      end // else: !if(clkcount < CLOCKDIV)
+   end // always @ (posedge eclk)
+   
+endmodule // segmentshifter
+
+module hex2segments(
+                    input  [3:0] hexvalue,
+                    output [7:0] segments
+                    );
+
+   function [7:0] Decoder;
+      input [3:0]                hexvalue;
+      begin
+         case (hexvalue)
+            0: Decoder = 8'b11011011;
+            1: Decoder = 8'b00001010;
+            2: Decoder = 8'b11110010;
+            3: Decoder = 8'b01111010;
+
+            4: Decoder = 8'b00101011;
+            5: Decoder = 8'b01111001;
+            6: Decoder = 8'b11111001;
+            7: Decoder = 8'b00011010;
+
+            8: Decoder = 8'b11111011;
+            9: Decoder = 8'b01111011;
+           10: Decoder = 8'b10111011;
+           11: Decoder = 8'b11101001;
+     
+           12: Decoder = 8'b11010001;
+           13: Decoder = 8'b11101010;
+           14: Decoder = 8'b11110001;
+           15: Decoder = 8'b10110001;
+         endcase // case (hexvalue)
+      end
+   endfunction // case
+
+   assign segments = Decoder(hexvalue);
+      
+endmodule // hex2segments
+
+module debouncer(
+                 input eclk,
+                 input button,
+                 output reg btn_debounce
+                 );
+   parameter REG_BITS = 8;
+
+   reg [REG_BITS-1:0]       counter = 0;
+   reg                      oldstate;
+
+   always @(posedge eclk) begin
+      if (button != oldstate) begin
+         counter <= 0;
+      end else begin
+         if (counter < (1 << REG_BITS)-1)
+           counter <= counter + 1;
+         else begin
+            btn_debounce <= button;
+         end
+      end
+      oldstate <= button;
+   end // always @ (posedge eclk)
+
+endmodule // debouncer

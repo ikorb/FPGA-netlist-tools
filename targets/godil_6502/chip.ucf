@@ -9,8 +9,8 @@ net "clk_49152mhz" loc = "p89" | iostandard = LVCMOS33 ;
 
 # inputs only
 #NET m49                       LOC=P89 | IOSTANDARD = LVCMOS33 ;
-#NET sw1                       LOC=P39 | IOSTANDARD = LVCMOS33 ;
-#NET sw2                       LOC=P69 | IOSTANDARD = LVCMOS33 | PULLUP ;
+NET sw1                       LOC=P39 | IOSTANDARD = LVCMOS33 ;
+NET sw2                       LOC=P69 | IOSTANDARD = LVCMOS33 | PULLUP ;
 #NET c13                       LOC=P38 | IOSTANDARD = LVCMOS33 | PULLUP ;
 #NET d13                       LOC=P88 | IOSTANDARD = LVCMOS33 | PULLUP ;
 #NET sout                      LOC=P13 | IOSTANDARD = LVCMOS33 | PULLUP ;
@@ -30,6 +30,9 @@ NET led<1>                       LOC=P25 | IOSTANDARD = LVCMOS33 ;  // cts
 #NET tcclk                     LOC=P50 | IOSTANDARD = LVCMOS33 | DRIVE=16 ;
 #NET tm1                       LOC=P42 | IOSTANDARD = LVCMOS33 | DRIVE=16 ;
 #NET thsw                      LOC=P99 | IOSTANDARD = LVCMOS33 | DRIVE=16 ;
+NET tst_rclk                   LOC=P27 | IOSTANDARD = LVCMOS33 | DRIVE=16 ;
+NET tst_sclk                   LOC=P44 | IOSTANDARD = LVCMOS33 | DRIVE=16 ;
+NET tst_ser                    LOC=P50 | IOSTANDARD = LVCMOS33 | DRIVE=16 ;
 
 # I/O's for DIL / main connector
 # 6502 pinout
@@ -77,8 +80,8 @@ NET res                        LOC=P11 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pi
 
 # unused I/Os
 
-#NET pin_c1                    LOC=P26 | IOSTANDARD = LVCMOS33 | PULLUP  ;
-#NET pin_a2                    LOC=P15 | IOSTANDARD = LVCMOS33 | PULLUP  ;
+NET pin_c1                    LOC=P26 | IOSTANDARD = LVCMOS33 | PULLUP  ;
+NET pin_a2                    LOC=P15 | IOSTANDARD = LVCMOS33 | PULLUP  ;
 #NET pin_a24                   LOC=P62 | IOSTANDARD = LVCMOS33 | PULLUP  ;
 #NET pin_c25                   LOC=P63 | IOSTANDARD = LVCMOS33 | PULLUP  ;
 
