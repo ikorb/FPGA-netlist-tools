@@ -1,5 +1,9 @@
 // Top-level module for GODIL40_XC3S500E board
 
+`define CLOCK_SHIFTER_LEN  5000
+`define CLOCK_TAP_INITIAL  26
+`define CLOCK_TAP_OFFSET   4660
+
 module godil40_xc3s500e(
   input clk_49152mhz,
 // start of 6502 pins on DIL40 connector
@@ -20,8 +24,8 @@ module godil40_xc3s500e(
 
   output pin_c1,
   output pin_a2,
-  input sw1,
-  input sw2,
+  input  sw1,
+  input  sw2,
   output tst_rclk,
   output tst_sclk,
   output tst_ser
@@ -66,29 +70,59 @@ module godil40_xc3s500e(
       syn_irq  = irq;
    end
 
+// phi0 delay
+   reg [`CLOCK_SHIFTER_LEN-1:0] clk0delay = 0;
+
+   always @(posedge eclk)
+     clk0delay <= {clk0delay[`CLOCK_SHIFTER_LEN-2:0], syn_clk0};
+   
 // debounce buttons
    debouncer _deb1(eclk,  sw1, btn1);
    debouncer _deb2(eclk, !sw2, btn2);
 
 // blink an LED using eclk
-
   blink #(26) _blink0(eclk, led[0]);
 
   assign led[1] = !res;
 
+// modify clock_tap via buttons
+   reg [5:0]  clock_tap = `CLOCK_TAP_INITIAL;
+   reg         button_lock = 0;
+
+   always @(posedge eclk) begin
+      if (!btn1 && !btn2)
+        button_lock <= 0;
+      else begin
+         if (!button_lock && btn1) begin
+            clock_tap <= clock_tap + 1;
+
+            button_lock <= 1;
+         end
+
+         if (!button_lock && btn2) begin
+            clock_tap <= clock_tap - 1;
+
+            button_lock <= 1;
+         end
+      end // else: !if(!btn1 && !btn2)
+   end // always @ (posedge eclk)
+   
 // calculate and display the difference between phi0 and phi2
    wire [15:0] diffticks;
    
    clock_difference _cdiff(eclk, syn_clk0, clk2out, diffticks, pin_c1, pin_a2);
-   dy1 _display(eclk, (diffticks >> 8) & 15,(diffticks >> 4) & 15,diffticks & 15, tst_rclk, tst_sclk, tst_ser);
+   dy1 _display(eclk,
+                (diffticks >> 8) & 15,(diffticks >> 4) & 15,diffticks & 15,
+                (clock_tap >> 8) & 15,(clock_tap >> 4) & 15,clock_tap & 15,
+                tst_rclk, tst_sclk, tst_ser);
 
 // instantiate the 6502 model
-
+   
   chip_6502 _chip_6502(eclk, ereset,
     ab[0], ab[1], ab[2], ab[3], ab[4], ab[5], ab[6], ab[7], ab[8], ab[9], ab[10], ab[11], ab[12], ab[13], ab[14], ab[15],
     db_i[0], db_o[0], db_t[0], db_i[1], db_o[1], db_t[1], db_i[2], db_o[2], db_t[2], db_i[3], db_o[3], db_t[3], 
     db_i[4], db_o[4], db_t[4], db_i[5], db_o[5], db_t[5], db_i[6], db_o[6], db_t[6], db_i[7], db_o[7], db_t[7], 
-    syn_res, rw, sync, syn_so, syn_clk0, clk1out, clk2out, syn_rdy, syn_nmi, syn_irq);
+    syn_res, rw, sync, syn_so, clk0delay[clock_tap + `CLOCK_TAP_OFFSET], clk1out, clk2out, syn_rdy, syn_nmi, syn_irq);
 
 endmodule
 
@@ -179,8 +213,8 @@ module clock_difference(
                           
    wire                         phi0long, phi2long;
 
-   long_clock_finder #(40) _clk0long(phi0, eclk, phi0long);
-   long_clock_finder #(40) _clk2long(phi2, eclk, phi2long);
+   long_clock_finder _clk0long(phi0, eclk, phi0long);
+   long_clock_finder _clk2long(phi2, eclk, phi2long);
 
    assign l0 = phi0long;
    assign l1 = phi2long;
@@ -247,7 +281,7 @@ module long_clock_finder(
                     input  eclk,
                     output reg longclock
                     );
-   parameter LONGCOUNT = 43;
+   parameter LONGCOUNT = 40;
    
    reg [7:0]               ticks;
    reg                     prevstate;
@@ -284,16 +318,23 @@ module dy1(
            input [3:0] digit1,
            input [3:0] digit2,
            input [3:0] digit3,
+           input [3:0] digit4,
+           input [3:0] digit5,
+           input [3:0] digit6,
            output rclk,
            output sclk,
            output ser
            );
 
-   wire [23:0]    segments;
+   wire [47:0]    segments;
    
-   hex2segments seg3(digit3, segments[7:0]);
+   hex2segments seg3(digit1, segments[7:0]);
    hex2segments seg2(digit2, segments[15:8]);
-   hex2segments seg1(digit1, segments[23:16]);
+   hex2segments seg1(digit3, segments[23:16]);
+
+   hex2segments seg6(digit4, segments[31:24]);
+   hex2segments seg5(digit5, segments[39:32]);
+   hex2segments seg4(digit6, segments[47:40]);
 
    segmentshifter shifter(eclk, segments, rclk, sclk, ser);
   
@@ -302,19 +343,15 @@ endmodule // dy1
 
 module segmentshifter(
                       input eclk,
-                      input [23:0] segments,
+                      input [47:0] segments,
                       output reg rclk,
                       output reg sclk,
                       output reg ser
                       );
-   parameter CLOCKDIV = 64;
+   parameter CLOCKDIV = 32;
 
    integer                   clkcount = 0;
-
-   reg [4:0]                 curseg = 0;
-
-   reg                       foo = 0;
-
+   integer                   curseg = 0;
    
    always @(posedge eclk) begin
       if (clkcount < CLOCKDIV) begin
@@ -331,7 +368,7 @@ module segmentshifter(
          ser  <= !segments[curseg];
          sclk <= 0;
 
-         if (curseg == 23) begin
+         if (curseg == 47) begin
             // last segment is now shifted in, copy to output
             rclk <= 1;
          end else begin
@@ -343,7 +380,7 @@ module segmentshifter(
             curseg <= curseg - 1;
          end else begin
             // wrap
-            curseg <= 23;
+            curseg <= 47;
          end
 
       end // else: !if(clkcount < CLOCKDIV)
@@ -355,6 +392,14 @@ module hex2segments(
                     input  [3:0] hexvalue,
                     output [7:0] segments
                     );
+
+   /* rotate the contents of a 7-segment digit by 180 degrees */
+   function [7:0] Rotate;
+      input [7:0]                s;
+      begin
+         Rotate = {s[1],s[4],s[5],s[6],s[0],s[2],s[7],s[3]};
+      end
+   endfunction // case
 
    function [7:0] Decoder;
       input [3:0]                hexvalue;
@@ -383,7 +428,7 @@ module hex2segments(
       end
    endfunction // case
 
-   assign segments = Decoder(hexvalue);
+   assign segments = Rotate(Decoder(hexvalue));
       
 endmodule // hex2segments
 
