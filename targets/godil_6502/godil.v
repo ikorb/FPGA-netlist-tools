@@ -1,8 +1,8 @@
 // Top-level module for GODIL40_XC3S500E board
 
-`define CLOCK_SHIFTER_LEN  5000
-`define CLOCK_TAP_INITIAL  26
-`define CLOCK_TAP_OFFSET   4660
+`define CLOCK_SHIFTER_LEN  500
+`define CLOCK_TAP_INITIAL  42   // sic!
+`define CLOCK_TAP_OFFSET   0
 
 module godil40_xc3s500e(
   input clk_49152mhz,
@@ -86,7 +86,7 @@ module godil40_xc3s500e(
   assign led[1] = !res;
 
 // modify clock_tap via buttons
-   reg [5:0]  clock_tap = `CLOCK_TAP_INITIAL;
+   reg [6:0]  clock_tap = `CLOCK_TAP_INITIAL;
    reg         button_lock = 0;
 
    always @(posedge eclk) begin
@@ -137,7 +137,7 @@ module clock_and_reset(
 );
 
   wire clk_56mhz;
-  dcm_mult #(3,2) _dcm0(clk_in, clk_56mhz);
+  dcm_mult #(8,7) _dcm0(clk_in, clk_56mhz);
   BUFG b0(.I(clk_56mhz), .O(eclk));
 
   reg [7:0] r = 8'd0;
@@ -211,18 +211,18 @@ module clock_difference(
    reg [1:0]                    state = STATE_IDLE;
 
                           
-   wire                         phi0long, phi2long;
+   wire                         phi0edge, phi2edge;
 
-   long_clock_finder _clk0long(phi0, eclk, phi0long);
-   long_clock_finder _clk2long(phi2, eclk, phi2long);
+   edge_finder _clk0long(phi0, eclk, phi0edge);
+   edge_finder _clk2long(phi2, eclk, phi2edge);
 
-   assign l0 = phi0long;
-   assign l1 = phi2long;
+   assign l0 = phi0edge;
+   assign l1 = phi2edge;
    
    always @(posedge eclk) begin
-      if (phi0long || phi2long) begin
+      if (phi0edge || phi2edge) begin
          // something happened
-         if (phi0long && phi2long) begin
+         if (phi0edge && phi2edge) begin
             // both at the same time
             diffticks <= 0;
             state <= STATE_IDLE;
@@ -230,7 +230,7 @@ module clock_difference(
             // single event
             case (state)
               STATE_IDLE: begin
-                 if (phi0long) begin
+                 if (phi0edge) begin
                     // first event on phi0
                     state <= STATE_WAIT2;
                     curticks <= 0;
@@ -242,7 +242,7 @@ module clock_difference(
               end // case: STATE_IDLE
               
               STATE_WAIT0: begin
-                 if (phi0long) begin
+                 if (phi0edge) begin
                     // end event found
                     state <= STATE_IDLE;
                     diffticks <= curticks;
@@ -253,7 +253,7 @@ module clock_difference(
               end
 
               STATE_WAIT2: begin
-                 if (phi0long) begin
+                 if (phi0edge) begin
                     // double start event found
                     curticks <= 0;
                  end else begin
@@ -265,50 +265,34 @@ module clock_difference(
 
               default: state <= STATE_IDLE;
             endcase // case (state)
-         end // else: !if(phi0long && phi2long)
-      end else begin // if (phi0long || phi2long)
+         end // else: !if(phi0edge && phi2edge)
+      end else begin // if (phi0edge || phi2edge)
          if (state != STATE_IDLE)
            curticks <= curticks + 1;
-      end // else: !if(phi0long || phi2long)
+      end // else: !if(phi0edge || phi2edge)
    end // always @ (posedge eclk)
 
 endmodule // clock_pll
 
 
 // outputs a single-clock signal when the falling edge of a long clock pulse is detected
-module long_clock_finder(
+module edge_finder(
                     input  clock,
                     input  eclk,
-                    output reg longclock
+                    output reg is_edge
                     );
-   parameter LONGCOUNT = 40;
-   
-   reg [7:0]               ticks;
    reg                     prevstate;
       
    always @(posedge eclk) begin
-      if (clock != prevstate) begin
-         // clock edge
-         if (clock) begin
-            // clock is now high, reset counter
-            ticks <= 8'd0;
-         end else begin
-            // clock is now low, check number of ticks
-            if (ticks > LONGCOUNT) begin
-               longclock <= 1;
-            end
-         end
-      end else begin // if (clock != prevstate)
-         longclock <= 0;
-         if (clock) begin
-            // clock is high, increment ticks
-            ticks <= ticks + 1;
-         end
-      end // else: !if(clock != prevstate)
-      prevstate = clock;
-   end // always @ (posedge eclk)
+      if (clock != prevstate && clock == 1) begin
+         is_edge <= 1;
+      end else begin
+         is_edge <= 0;
+      end
+      prevstate <= clock;
+   end
 
-endmodule // long_clock_finder
+endmodule // edge_finder
 
 
 /* ---- 7-Segment-Display ---- */
