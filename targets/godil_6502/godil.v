@@ -1,8 +1,8 @@
 // Top-level module for GODIL40_XC3S500E board
 
 `define CLOCK_SHIFTER_LEN  5000
-`define CLOCK_TAP_INITIAL  26
-`define CLOCK_TAP_OFFSET   4660
+`define CLOCK_TAP_INITIAL  19
+`define CLOCK_TAP_OFFSET   3550
 
 module godil40_xc3s500e(
   input clk_49152mhz,
@@ -86,8 +86,8 @@ module godil40_xc3s500e(
   assign led[1] = !res;
 
 // modify clock_tap via buttons
-   reg [5:0]  clock_tap = `CLOCK_TAP_INITIAL;
-   reg         button_lock = 0;
+   reg [7:0]                    clock_tap = `CLOCK_TAP_INITIAL;
+   reg                          button_lock = 0;
 
    always @(posedge eclk) begin
       if (!btn1 && !btn2)
@@ -137,7 +137,7 @@ module clock_and_reset(
 );
 
   wire clk_56mhz;
-  dcm_mult #(3,2) _dcm0(clk_in, clk_56mhz);
+  dcm_mult #(8,7) _dcm0(clk_in, clk_56mhz);
   BUFG b0(.I(clk_56mhz), .O(eclk));
 
   reg [7:0] r = 8'd0;
@@ -281,7 +281,7 @@ module long_clock_finder(
                     input  eclk,
                     output reg longclock
                     );
-   parameter LONGCOUNT = 40;
+   parameter LONGCOUNT = 30;
    
    reg [7:0]               ticks;
    reg                     prevstate;
