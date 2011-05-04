@@ -37,44 +37,44 @@ NET tst_ser                    LOC=P50 | IOSTANDARD = LVCMOS33 | DRIVE=16 ;
 # I/O's for DIL / main connector
 # 6502 pinout
 
-#NET pin<1>                    LOC=P16 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 1 is Vss
+NET clk0                       LOC=P16 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 1
 NET rdy                        LOC=P95 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 2
-NET clk1out                    LOC=P18 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 3
-NET irq                        LOC=P17 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 4
-#NET pin<5>                    LOC=P94 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 5 is NC
-NET nmi                        LOC=P22 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 6
-NET sync                       LOC=P23 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 7
-#NET pin<8>                    LOC=P33 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 8 is Vcc
-NET ab<0>                      LOC=P32 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 9
-NET ab<1>                      LOC=P34 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 10
-NET ab<2>                      LOC=P40 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 11
-NET ab<3>                      LOC=P41 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 12
-NET ab<4>                      LOC=P36 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 13
-NET ab<5>                      LOC=P35 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 14
-NET ab<6>                      LOC=P53 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 15
-NET ab<7>                      LOC=P54 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 16
-NET ab<8>                      LOC=P57 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 17
-NET ab<9>                      LOC=P58 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 18
-NET ab<10>                     LOC=P60 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 19
-NET ab<11>                     LOC=P61 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 20
+NET irq                        LOC=P18 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 3
+NET nmi                        LOC=P17 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 4
+NET aec                        LOC=P94 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 5
+#NET pin6                      LOC=P22 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 6 is Vcc
+NET ab<0>                      LOC=P23 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 7
+NET ab<1>                      LOC=P33 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 8
+NET ab<2>                      LOC=P32 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 9
+NET ab<3>                      LOC=P34 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 10
+NET ab<4>                      LOC=P40 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 11
+NET ab<5>                      LOC=P41 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 12
+NET ab<6>                      LOC=P36 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 13
+NET ab<7>                      LOC=P35 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 14
+NET ab<8>                      LOC=P53 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 15
+NET ab<9>                      LOC=P54 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 16
+NET ab<10>                     LOC=P57 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 17
+NET ab<11>                     LOC=P58 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 18
+NET ab<12>                     LOC=P60 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 19
+NET ab<13>                     LOC=P61 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 20
 #NET pin<21>                   LOC=P67 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 21 is Vss
-NET ab<12>                     LOC=P68 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 22
-NET ab<13>                     LOC=P70 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 23
-NET ab<14>                     LOC=P71 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 24
-NET ab<15>                     LOC=P86 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 25
-NET db<7>                      LOC=P84 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 26
-NET db<6>                      LOC=P83 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 27
-NET db<5>                      LOC=P78 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 28
-NET db<4>                      LOC=P79 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 29
-NET db<3>                      LOC=P85 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 30
-NET db<2>                      LOC=P92 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 31
-NET db<1>                      LOC=P98 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 32
-NET db<0>                      LOC=P3  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 33
-NET rw                         LOC=P2  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 34
-#NET pin<35>                   LOC=P4  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 35 is NC
-#NET pin<36>                   LOC=P5  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 36 is NC
-NET clk0                       LOC=P90 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 37
-NET so                         LOC=P9  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 38
+NET ab<14>                     LOC=P68 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 22
+NET ab<15>                     LOC=P70 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 23
+NET pio<5>                     LOC=P71 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 24
+NET pio<4>                     LOC=P86 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 25
+NET pio<3>                     LOC=P84 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 26
+NET pio<2>                     LOC=P83 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 27
+NET pio<1>                     LOC=P78 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 28
+NET pio<0>                     LOC=P79 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 29
+NET db<7>                      LOC=P85 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 30
+NET db<6>                      LOC=P92 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 31
+NET db<5>                      LOC=P98 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 32
+NET db<4>                      LOC=P3  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 33
+NET db<3>                      LOC=P2  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 34
+NET db<2>                      LOC=P4  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 35
+NET db<1>                      LOC=P5  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 36
+NET db<0>                      LOC=P90 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 37
+NET rw                         LOC=P9  | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 38
 NET clk2out                    LOC=P10 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 39
 NET res                        LOC=P11 | IOSTANDARD = LVCMOS33 | PULLUP  ;  # pin 40
 

@@ -1,24 +1,24 @@
 // Top-level module for GODIL40_XC3S500E board
 
 `define CLOCK_SHIFTER_LEN  500
-`define CLOCK_TAP_INITIAL  42   // sic!
+`define CLOCK_TAP_INITIAL  50
 `define CLOCK_TAP_OFFSET   0
 
 module godil40_xc3s500e(
   input clk_49152mhz,
-// start of 6502 pins on DIL40 connector
+// start of 6510 pins on DIL40 connector
   output [15:0] ab,
   inout [7:0] db,
+  input aec,
   input res,
   output rw,
-  output sync,
-  input so,
   input clk0,
-  output clk1out,
   output clk2out,
   input rdy,
   input nmi,
   input irq,
+  inout [5:0] pio,
+
 // end of 6502 pins on DIL40 connector
   output [1:0] led,
 
@@ -34,7 +34,6 @@ module godil40_xc3s500e(
 // synchronized signals
    reg [7:0]  syn_db;
    reg        syn_res;
-   reg        syn_so;
    reg        syn_clk0;
    reg        syn_rdy;
    reg        syn_nmi;
@@ -50,8 +49,21 @@ module godil40_xc3s500e(
   wire [7:0] db_o;
   wire [7:0] db_t;  // not yet properly set by the 6502 model; instead use rw for the three-state enable for all db pins
 
-  assign db_i = syn_db;
-  assign db = rw ? 8'bz : db_o;
+  wire       port_read;
+  wire [7:0] port_db;
+
+  assign db_i = port_read ? port_db : syn_db;
+  assign db = (!aec || rw) ? 8'bz : db_o;
+
+  wire      rw_int;
+
+  assign rw = (!aec) ? 1'bz : rw_int;
+
+// handle three-state address bus
+
+  wire [15:0] ab_int;
+
+  assign ab = (!aec) ? 16'bz : ab_int;
 
 // create an emulation clock from clk_49152mhz
 
@@ -63,7 +75,6 @@ module godil40_xc3s500e(
    always @(posedge eclk) begin
       syn_db   = db;
       syn_res  = res;
-      syn_so   = so;
       syn_clk0 = clk0;
       syn_rdy  = rdy;
       syn_nmi  = nmi;
@@ -110,19 +121,22 @@ module godil40_xc3s500e(
 // calculate and display the difference between phi0 and phi2
    wire [15:0] diffticks;
    
-   clock_difference _cdiff(eclk, syn_clk0, clk2out, diffticks, pin_c1, pin_a2);
+   clock_difference _cdiff(eclk, syn_clk0, clk2out, diffticks, pin_a2, pin_c1);
    dy1 _display(eclk,
                 (diffticks >> 8) & 15,(diffticks >> 4) & 15,diffticks & 15,
                 (clock_tap >> 8) & 15,(clock_tap >> 4) & 15,clock_tap & 15,
                 tst_rclk, tst_sclk, tst_ser);
 
+// CPU port
+   gpio_6510 _port(eclk, clk2out, ab_int, port_db, db_o, rw_int, syn_res, port_read, pio);
+
 // instantiate the 6502 model
    
   chip_6502 _chip_6502(eclk, ereset,
-    ab[0], ab[1], ab[2], ab[3], ab[4], ab[5], ab[6], ab[7], ab[8], ab[9], ab[10], ab[11], ab[12], ab[13], ab[14], ab[15],
+    ab_int[0], ab_int[1], ab_int[2], ab_int[3], ab_int[4], ab_int[5], ab_int[6], ab_int[7], ab_int[8], ab_int[9], ab_int[10], ab_int[11], ab_int[12], ab_int[13], ab_int[14], ab_int[15],
     db_i[0], db_o[0], db_t[0], db_i[1], db_o[1], db_t[1], db_i[2], db_o[2], db_t[2], db_i[3], db_o[3], db_t[3], 
     db_i[4], db_o[4], db_t[4], db_i[5], db_o[5], db_t[5], db_i[6], db_o[6], db_t[6], db_i[7], db_o[7], db_t[7], 
-    syn_res, rw, sync, syn_so, clk0delay[clock_tap + `CLOCK_TAP_OFFSET], clk1out, clk2out, syn_rdy, syn_nmi, syn_irq);
+    syn_res, rw_int, sync, 1'b0, clk0delay[clock_tap + `CLOCK_TAP_OFFSET], clk1out, clk2out, syn_rdy, syn_nmi, syn_irq);
 
 endmodule
 
@@ -440,3 +454,58 @@ module debouncer(
    end // always @ (posedge eclk)
 
 endmodule // debouncer
+
+//
+// 6510 GPIO implementation
+//
+
+module gpio_6510(
+                 input      eclk,
+                 input      phi2,
+                 input      [15:0] ab,
+                 output reg [7:0] db_o,
+                 input      [7:0] db_i,
+                 input      rw,
+                 input      reset,
+                 output     port_read,
+                 inout      [5:0] pio,
+                 );
+
+   reg [5:0] pio_dir;
+   reg [5:0] pio_val;
+
+   // FIXME: There is probably a nicer way to do this
+   assign pio[0] = pio_dir[0] ? pio_val[0] : 1'bz;
+   assign pio[1] = pio_dir[1] ? pio_val[1] : 1'bz;
+   assign pio[2] = pio_dir[2] ? pio_val[2] : 1'bz;
+   assign pio[3] = pio_dir[3] ? pio_val[3] : 1'bz;
+   assign pio[4] = pio_dir[4] ? pio_val[4] : 1'bz;
+   assign pio[5] = pio_dir[5] ? pio_val[5] : 1'bz;
+
+
+   wire                 port_access;
+   assign port_access = (ab[15:1] == 15'h0000);
+
+   assign port_read   = rw && port_access;
+
+   always @(posedge eclk) begin
+      if (!reset) begin
+         // reset
+         pio_dir <= 6'b000000;
+         pio_val <= 6'b000000;
+      end else if (port_access & rw) begin
+         // read
+         if (ab[0])
+           db_o <= {2'b00, pio_val};
+         else
+           db_o <= {2'b00, pio_dir};
+      end else if (port_access && !rw) begin
+         // write
+         if (ab[0])
+           pio_val <= db_i[5:0];
+         else
+           pio_dir <= db_i[5:0];
+      end
+   end
+
+endmodule // gpio_6510
