@@ -468,7 +468,7 @@ module gpio_6510(
                  input      rw,
                  input      reset,
                  output     port_read,
-                 inout      [5:0] pio,
+                 inout      [5:0] pio
                  );
 
    reg [5:0] pio_dir;
